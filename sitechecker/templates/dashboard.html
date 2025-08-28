@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Статус сайтов</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <h1>Статус сайтов</h1>
+  <div class="dashboard-status">
+    {{range .}}
+    <div class="{{if .Active}}green{{else}}red{{end}}" title="{{.URL}}"></div>
+    {{end}}
+  </div>
+  <a href="/">Назад</a>
+</body>
+</html>

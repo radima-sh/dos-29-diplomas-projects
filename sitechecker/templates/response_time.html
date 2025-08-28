@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Время ответа сайтов</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <h1>Время ответа сайтов (мс)</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Сайт</th>
+        <th>Время ответа (мс)</th>
+      </tr>
+    </thead>
+    <tbody>
+    {{range .}}
+      <tr>
+        <td>{{.URL}}</td>
+        <td>{{.ResponseTimeMs}}</td>
+      </tr>
+    {{end}}
+    </tbody>
+  </table>
+  <a href="/">Назад</a>
+</body>
+</html>

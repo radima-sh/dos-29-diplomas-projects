@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Site Checker</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <h1>Site Checker</h1>
+  <form action="/add" method="post">
+    <input type="text" name="url" placeholder="https://example.com" required />
+    <button type="submit">Добавить сайт</button>
+  </form>
+  <br />
+  <a href="/dashboard">Открыть общий дашборд</a><br />
+  <a href="/response-time">Открыть дашборд с временем ответа</a>
+</body>
+</html>
