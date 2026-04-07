@@ -1,0 +1,45 @@
+# ========== Terraform ==========
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.lock.hcl
+
+# ========== Ansible ==========
+*.retry
+infra/ansible/roles/*/files/
+infra/ansible/roles/*/templates/
+
+# ========== Docker ==========
+*.log
+docker-compose.override.yml
+
+# ========== Go ==========
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.prof
+bin/
+pkg/
+coverage.out
+
+# ========== Environment ==========
+.env
+*.env
+!.env.example
+
+# ========== IDE & Editor ==========
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.tmp
+
+# ========== OS ==========
+.DS_Store
+Thumbs.db
