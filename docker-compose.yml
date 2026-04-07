@@ -1,0 +1,47 @@
+services:
+  # ========== Наше Go-приложение ==========
+  app:
+    build: .                          # Собираем образ из Dockerfile в текущей папке
+    container_name: sitechecker-app   # Фиксированное имя контейнера (удобно для логов)
+    ports:
+      - "8080:8080"                   # Хост:контейнер — доступ к приложению на localhost:8080
+    environment:                      # Переменные окружения для подключения к БД
+      - PGUSER=${PGUSER:-postgres}
+      - PGPASSWORD=${PGPASSWORD:-changeme}
+      - PGHOST=db                     # Имя сервиса БД в docker-compose (автоматический DNS!)
+      - PGPORT=5432
+      - PGDATABASE=sitesdb
+      - PGSSLMODE=disable
+    depends_on:                       # Ждём, пока БД будет готова
+      db:
+        condition: service_healthy
+    restart: unless-stopped           # Перезапускать при падении (кроме ручной остановки)
+    networks:
+      - app-network                   # Изолированная сеть для сервисов
+
+  # ========== PostgreSQL ==========
+  db:
+    image: postgres:15-alpine         # Официальный минимальный образ PostgreSQL 15
+    container_name: sitechecker-db
+    environment:
+      - POSTGRES_USER=${PGUSER:-postgres}
+      - POSTGRES_PASSWORD=${PGPASSWORD:-changeme}
+      - POSTGRES_DB=sitesdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Сохраняем данные при перезапуске
+    healthcheck:                      # Проверка готовности БД
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - app-network
+
+# ========== Настройки сетей и томов ==========
+networks:
+  app-network:
+    driver: bridge                    # Стандартная изолированная сеть
+
+volumes:
+  postgres_data:                      # Именованный том для данных БД
