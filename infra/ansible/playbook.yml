@@ -1,0 +1,93 @@
+---
+- name: Настройка сервера для Site Checker
+  hosts: sitechecker
+  become: true  # Все задачи выполняются с sudo (от root)
+
+  tasks:
+    # 1. Обновляем кэш пакетов
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    # 2. Устанавливаем необходимые утилиты
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+
+    # 3. Добавляем GPG-ключ Docker
+    - name: Add Docker GPG key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    # 4. Добавляем репозиторий Docker (исправленная переменная)
+    - name: Add Docker repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_facts['distribution_release'] }} stable"
+        state: present
+
+    # 5. Устанавливаем Docker Engine и плагин compose
+    - name: Install Docker Engine
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+        state: present
+
+    # 6. Добавляем ubuntu в группу docker (на будущее, для ручного доступа)
+    - name: Add ubuntu user to docker group
+      ansible.builtin.user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    # 7. Создаём папку для приложения
+    - name: Create app directory
+      ansible.builtin.file:
+        path: /home/ubuntu/sitechecker
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    # 8. Копируем ВСЕ файлы проекта на сервер
+    - name: Copy application files
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../"
+        dest: /home/ubuntu/sitechecker/
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    # 9. Копируем .env с защищёнными правами
+    - name: Copy .env file securely
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../.env"
+        dest: /home/ubuntu/sitechecker/.env
+        owner: ubuntu
+        group: ubuntu
+        mode: '0600'
+
+    # 10. Запускаем приложение через docker compose (ЗАПУСКАЕМ ОТ ROOT - без become_user)
+    - name: Start application
+      ansible.builtin.command: docker compose up -d --build
+      args:
+        chdir: /home/ubuntu/sitechecker
+      # Убрали become_user: ubuntu — запускаем от root (уже есть become: true выше)
+      # Это решает проблему с правами на docker.sock
+
+    # 11. Ждём, пока приложение поднимется на порту 8080
+    - name: Wait for app to be ready
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 8080
+        timeout: 90

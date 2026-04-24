@@ -43,3 +43,6 @@ coverage.out
 # ========== OS ==========
 .DS_Store
 Thumbs.db
+ci-cd-key.json
+ci-cd-key.yaml
+*.key
