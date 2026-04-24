@@ -21,13 +21,15 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.21"
+          cache: true
+          cache-dependency-path: sitechecker/go.sum
 
       - name: Dependencies
         run: go mod download
         working-directory: sitechecker
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v6
         with:
           version: latest
           working-directory: sitechecker
