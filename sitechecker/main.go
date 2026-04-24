@@ -135,7 +135,11 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		sites = append(sites, s)
 	}
-	templates.ExecuteTemplate(w, "dashboard.html", sites)
+	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
+    http.Error(w, "Failed to render template", http.StatusInternalServerError)
+    log.Printf("Template error: %v", err)
+    return
+}
 }
 
 func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
@@ -154,11 +158,19 @@ func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		sites = append(sites, s)
 	}
-	templates.ExecuteTemplate(w, "response_time.html", sites)
+	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
+    http.Error(w, "Failed to render template", http.StatusInternalServerError)
+    log.Printf("Template error: %v", err)
+    return
+}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	templates.ExecuteTemplate(w, "index.html", nil)
+	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
+    http.Error(w, "Failed to render template", http.StatusInternalServerError)
+    log.Printf("Template error: %v", err)
+    return
+}
 }
 
 func main() {
