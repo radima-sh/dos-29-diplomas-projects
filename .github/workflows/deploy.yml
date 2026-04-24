@@ -1,11 +1,12 @@
----
 name: CI/CD Pipeline
 
-"on":
+on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 env:
   REGISTRY: cr.yandex/crp5d38eikvdl1p4haav/sitechecker-registry
@@ -20,21 +21,19 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
-          cache: true
-          cache-dependency-path: sitechecker/go.sum
+          go-version: '1.21'
 
-      - name: Dependencies
+      - name: Download dependencies
         run: go mod download
         working-directory: sitechecker
 
-      - name: Lint
-        uses: golangci/golangci-lint-action@v6
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v3
         with:
           version: latest
           working-directory: sitechecker
 
-      - name: Test
+      - name: Run tests
         run: go test -v ./...
         working-directory: sitechecker
 
@@ -45,21 +44,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Login to YC Registry
+      - name: Login to Yandex Container Registry
         uses: docker/login-action@v3
         with:
           registry: cr.yandex
           username: json_key
           password: ${{ secrets.YC_SA_KEY }}
 
-      - name: Build & Push
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
           push: true
-          tags: >-
-            ${{ env.REGISTRY }}:${{ env.IMAGE_TAG }},
+          tags: |
+            ${{ env.REGISTRY }}:${{ env.IMAGE_TAG }}
             ${{ env.REGISTRY }}:latest
 
   deploy:
@@ -67,15 +66,15 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: appleboy/ssh-action@v1.0.3
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VM_IP }}
           username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/ubuntu/sitechecker
-            echo "${{ secrets.YC_SA_KEY }}" | docker login \
-              -u json_key --password-stdin cr.yandex
+            echo "${{ secrets.YC_SA_KEY }}" | docker login -u json_key --password-stdin cr.yandex
             docker compose pull
             docker compose up -d
             docker system prune -af --volumes
