@@ -6,191 +6,144 @@ import (
 	"html/template"
 	"log"
 	"net/http"
-	"time"
 	"os"
+	"time"
 
 	_ "github.com/lib/pq"
 )
 
 type Site struct {
-	ID int
-	URL string
-	Active bool
-	LastCheck time.Time
+	URL            string
+	Active         bool
 	ResponseTimeMs int64
-	}
+	LastChecked    time.Time
+}
 
-var (
-	db *sql.DB
-	templates *template.Template
-)
+var db *sql.DB
+var templates *template.Template
 
-func initDB() {
-	//connStr := "postgres://postgres:password@localhost:5432/sitesdb?sslmode=disable"
+func init() {
+	// Подключение к БД из переменных окружения
 	connStr := fmt.Sprintf(
-    	"postgresql://%s:%s@%s:%s/%s?sslmode=%s",
-    	os.Getenv("PGUSER"),
-    	os.Getenv("PGPASSWORD"),
-    	os.Getenv("PGHOST"),
-    	os.Getenv("PGPORT"),
-    	os.Getenv("PGDATABASE"),
-    	os.Getenv("PGSSLMODE"),
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		os.Getenv("PGHOST"),
+		os.Getenv("PGPORT"),
+		os.Getenv("PGUSER"),
+		os.Getenv("PGPASSWORD"),
+		os.Getenv("PGDATABASE"),
 	)
 	var err error
 	db, err = sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("DB connect error: %v", err)
 	}
-	err = db.Ping()
-	if err != nil {
-		log.Fatal(err)
-	}
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS sites (
-		id SERIAL PRIMARY KEY,
-		url TEXT UNIQUE NOT NULL,
-		active BOOLEAN DEFAULT FALSE,
-		last_check TIMESTAMP,
-		response_time_ms BIGINT
-		)`)
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
 
-	if err != nil {
-		log.Fatal(err)
-	}
+	// Загрузка шаблонов
+	templates = template.Must(template.ParseGlob("templates/*.html"))
 }
 
-func checkSite(url string) (active bool, responseTime int64, err error) {
-	start := time.Now()
-	client := http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(url)
+func indexHandler(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.Query("SELECT url, active FROM sites ORDER BY url")
 	if err != nil {
-		return false, 0, err
-	}
-	defer resp.Body.Close()
-	elapsed := time.Since(start).Milliseconds()
-	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
-		return true, elapsed, nil
-	}
-	return false, elapsed, nil
-}
-
-func addSiteHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
-		return
-	}
-	url := r.FormValue("url")
-	if url == "" {
-	http.Error(w, "url is required", http.StatusBadRequest)
-	return
-	}
-
-	_, err := db.Exec("INSERT INTO sites (url) VALUES ($1) ON CONFLICT DO NOTHING", url)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("db error: %v", err), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-}
-
-func updateStatuses() {
-	rows, err := db.Query("SELECT id, url FROM sites")
-	if err != nil {
-		log.Println("Error querying sites:", err)
+		http.Error(w, "DB query failed", http.StatusInternalServerError)
+		log.Printf("DB query error: %v", err)
 		return
 	}
 	defer rows.Close()
+
+	var sites []Site
 	for rows.Next() {
-			var id int
-			var url string
-			err := rows.Scan(&id, &url)
-			if err != nil {
-				log.Println("Scan error:", err)
-				continue
-			}
-		active, respTime, err := checkSite(url)
-		if err != nil {
-			active = false
-			respTime = 0
+		var s Site
+		if err := rows.Scan(&s.URL, &s.Active); err != nil {
+			log.Printf("Row scan error: %v", err)
+			continue
 		}
-		_, err = db.Exec("UPDATE sites SET active=$1, last_check=NOW(), response_time_ms=$2 WHERE id=$3", active, respTime, id)
-		if err != nil {
-				log.Println("Update error:", err)
+		sites = append(sites, s)
+	}
+
+	//  data определена ПЕРЕД использованием
+	data := struct {
+		Sites []Site
+		Title string
+	}{
+		Sites: sites,
+		Title: "Site Checker",
+	}
+
+	//  Обработка ошибки рендеринга
+	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
+		http.Error(w, "Template render failed", http.StatusInternalServerError)
+		log.Printf("Template error: %v", err)
+		return
+	}
+}
+
+func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.Query("SELECT url, response_time_ms FROM sites WHERE response_time_ms IS NOT NULL ORDER BY url")
+	if err != nil {
+		http.Error(w, "DB query failed", http.StatusInternalServerError)
+		log.Printf("DB query error: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	var sites []Site
+	for rows.Next() {
+		var s Site
+		if err := rows.Scan(&s.URL, &s.ResponseTimeMs); err != nil {
+			log.Printf("Row scan error: %v", err)
+			continue
 		}
+		sites = append(sites, s)
+	}
+
+	//  data определена ПЕРЕД использованием
+	data := struct {
+		Sites []Site
+		Title string
+	}{
+		Sites: sites,
+		Title: "Response Times",
+	}
+
+	//  Правильное имя шаблона + обработка ошибки
+	if err := templates.ExecuteTemplate(w, "response_time.html", data); err != nil {
+		http.Error(w, "Template render failed", http.StatusInternalServerError)
+		log.Printf("Template error: %v", err)
+		return
 	}
 }
 
 func dashboardHandler(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query("SELECT url, active FROM sites")
-	if err != nil {
-		http.Error(w, "DB error", 500)
+	// Простой пример: показываем заглушку
+	data := struct {
+		Title string
+		Message string
+	}{
+		Title: "Dashboard",
+		Message: "Dashboard is under construction",
+	}
+
+	if err := templates.ExecuteTemplate(w, "dashboard.html", data); err != nil {
+		http.Error(w, "Template render failed", http.StatusInternalServerError)
+		log.Printf("Template error: %v", err)
 		return
 	}
-	defer rows.Close()
-	var sites []Site
-	for rows.Next() {
-		var s Site
-		err := rows.Scan(&s.URL, &s.Active)
-		if err != nil {
-			continue
-		}
-		sites = append(sites, s)
-	}
-	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
-    http.Error(w, "Failed to render template", http.StatusInternalServerError)
-    log.Printf("Template error: %v", err)
-    return
-}
-}
-
-func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query("SELECT url, response_time_ms FROM sites")
-	if err != nil {
-		http.Error(w, "DB error", 500)
-		return
-	}
-	defer rows.Close()
-	var sites []Site
-	for rows.Next() {
-		var s Site
-		err := rows.Scan(&s.URL, &s.ResponseTimeMs)
-		if err != nil {
-			continue
-		}
-		sites = append(sites, s)
-	}
-	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
-    http.Error(w, "Failed to render template", http.StatusInternalServerError)
-    log.Printf("Template error: %v", err)
-    return
-}
-}
-
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
-    http.Error(w, "Failed to render template", http.StatusInternalServerError)
-    log.Printf("Template error: %v", err)
-    return
-}
 }
 
 func main() {
-	initDB()
-	templates = template.Must(template.ParseGlob("templates/*.html"))
-	// Periodic update of site statuses
-	go func() {
-		for {
-			updateStatuses()
-			time.Sleep(1 * time.Minute)
-		}
-	}()
-
+	// Регистрация хендлеров
 	http.HandleFunc("/", indexHandler)
-	http.HandleFunc("/add", addSiteHandler)
-	http.HandleFunc("/dashboard", dashboardHandler)
 	http.HandleFunc("/response-time", responseTimeHandler)
+	http.HandleFunc("/dashboard", dashboardHandler)
 
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-
-	fmt.Println("Listening on :8080...")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	// Запуск сервера
+	port := ":8080"
+	log.Printf("Server starting on http://localhost%s", port)
+	if err := http.ListenAndServe(port, nil); err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
 }
+
