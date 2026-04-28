@@ -1,3 +1,4 @@
+// rebuild: 2026-04-28-force
 package main
 
 import (
