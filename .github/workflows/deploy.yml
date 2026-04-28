@@ -37,15 +37,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Decode and save YC key
-        run: echo "${{ secrets.YC_SA_KEY }}" | base64 -d > /tmp/yc-key.json
+      - name: Decode YC Key to Env Var
+        id: decode-key
+        run: |
+          DECODED_KEY=$(echo "${{ secrets.YC_SA_KEY }}" | base64 -d)
+          echo "key<<EOF" >> $GITHUB_OUTPUT
+          echo "$DECODED_KEY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
       
       - name: Login to YC Registry
         uses: docker/login-action@v3
         with:
           registry: cr.yandex
           username: json_key
-          password-file: /tmp/yc-key.json
+          password: ${{ steps.decode-key.outputs.key }}
       
       - name: Build & Push
         uses: docker/build-push-action@v5
