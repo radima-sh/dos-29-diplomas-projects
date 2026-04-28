@@ -1,18 +1,61 @@
 <!DOCTYPE html>
+<!-- rebuild-trigger: 2026-04-28-final-fix -->
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <title>Статус сайтов</title>
   <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    /* Стили для списка статусов */
+    .status-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin: 1rem 0;
+      max-width: 600px;
+    }
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 0;
+    }
+    .status-indicator {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-indicator.green { background-color: #28a745; }
+    .status-indicator.red { background-color: #dc3545; }
+    .site-name {
+      font-size: 0.95rem;
+      color: #333;
+      word-break: break-all;
+      max-width: 400px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .site-name a {
+      color: #0066cc;
+      text-decoration: none;
+    }
+    .site-name a:hover { text-decoration: underline; }
+  </style>
 </head>
 <body>
   <h1>Статус сайтов</h1>
-  <div class="dashboard-status">
+  
+  <div class="status-list">
     {{range .}}
-    <div class="{{if .Active}}green{{else}}red{{end}}" title="{{.URL}}"></div>
-    <div class="site-name">{{.URL}}</div>
+    <div class="status-item">
+      <div class="status-indicator {{if .Active}}green{{else}}red{{end}}" title="{{.URL}}"></div>
+      <div class="site-name"><a href="{{.URL}}" target="_blank">{{.URL}}</a></div>
+    </div>
     {{end}}
   </div>
-  <a href="/">Назад</a>
+  
+  <a href="/">← На главную</a>
 </body>
 </html>

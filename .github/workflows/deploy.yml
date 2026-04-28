@@ -60,6 +60,8 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}:latest
           no-cache: true
+          build-args: |
+            REBUILD_TS=${{ github.run_id }}-${{ github.run_attempt }}
 
   deploy:
     needs: build-and-push

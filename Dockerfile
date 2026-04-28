@@ -1,6 +1,8 @@
 # ========== ЭТАП 1: СБОРКА ==========
 FROM golang:1.21-alpine AS builder
 
+ARG REBUILD_TS
+
 RUN apk add --no-cache git ca-certificates
 
 WORKDIR /app
