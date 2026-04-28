@@ -59,6 +59,7 @@ jobs:
           file: Dockerfile
           push: true
           tags: ${{ env.REGISTRY }}:latest
+          no-cache: true
 
   deploy:
     needs: build-and-push
