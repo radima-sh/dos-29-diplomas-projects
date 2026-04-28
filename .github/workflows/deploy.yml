@@ -81,6 +81,8 @@ jobs:
             docker images | grep sitechecker-registry | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
             
             # 📦 Скачиваем свежий образ
+            # Удаляем локальный образ, чтобы гарантированно скачать новый
+            docker rmi cr.yandex/crp5d38eikvdl1p4haav/sitechecker-registry:latest 2>/dev/null || true
             docker compose pull app
             
             # 🚀 Запускаем с новым образом
