@@ -36,12 +36,17 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Decode and save YC key
+        run: echo "${{ secrets.YC_SA_KEY }}" | base64 -d > /tmp/yc-key.json
+      
       - name: Login to YC Registry
         uses: docker/login-action@v3
         with:
           registry: cr.yandex
           username: json_key
-          password: ${{ fromBase64(secrets.YC_SA_KEY) }}  #  Декодируем base64!
+          password-file: /tmp/yc-key.json
+      
       - name: Build & Push
         uses: docker/build-push-action@v5
         with:
@@ -63,18 +68,18 @@ jobs:
           script: |
             cd /home/ubuntu/sitechecker
             
-            #  Декодируем base64-ключ и авторизуемся
+            # 🔐 Декодируем base64-ключ и авторизуемся
             echo "${{ secrets.YC_SA_KEY }}" | base64 -d | docker login -u json_key --password-stdin cr.yandex
             
-            #  Удаляем старый образ
+            # 🗑️ Удаляем старый образ
             docker compose down app 2>/dev/null || true
             docker images | grep sitechecker-registry | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
             
-            #  Скачиваем свежий образ
+            # 📦 Скачиваем свежий образ
             docker compose pull app
             
-            #  Запускаем с новым образом
+            # 🚀 Запускаем с новым образом
             docker compose up -d --force-recreate --no-deps app
             
-            # Чистим старые образы
+            # 🧹 Чистим старые образы
             docker image prune -f
