@@ -83,6 +83,7 @@ jobs:
             # 📦 Скачиваем свежий образ
             # Удаляем локальный образ, чтобы гарантированно скачать новый
             docker rmi cr.yandex/crp5d38eikvdl1p4haav/sitechecker-registry:latest 2>/dev/null || true
+            docker pull cr.yandex/crp5d38eikvdl1p4haav/sitechecker-registry:latest
             docker compose pull app
             
             # 🚀 Запускаем с новым образом
