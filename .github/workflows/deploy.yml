@@ -2,11 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 env:
   REGISTRY: cr.yandex/crp5d38eikvdl1p4haav/sitechecker-registry
@@ -20,10 +18,8 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-          cache: true
           cache-dependency-path: sitechecker/go.sum
-      - name: Download deps
-        run: go mod download
+      - run: go mod download
         working-directory: sitechecker
       - name: Lint
         uses: golangci/golangci-lint-action@v6
@@ -46,15 +42,13 @@ jobs:
           registry: cr.yandex
           username: json_key
           password: ${{ secrets.YC_SA_KEY }}
-      - name: Build and Push
+      - name: Build & Push
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile
           push: true
-          tags: |
-            ${{ env.REGISTRY }}:latest
-            ${{ env.REGISTRY }}:${{ github.sha }}
+          tags: ${{ env.REGISTRY }}:latest
 
   deploy:
     needs: build-and-push
@@ -69,6 +63,7 @@ jobs:
           script: |
             cd /home/ubuntu/sitechecker
             echo "${{ secrets.YC_SA_KEY }}" | docker login -u json_key --password-stdin cr.yandex
+            docker rmi cr.yandex/crp5d38eikvdl1p4haav/sitechecker-registry:latest 2>/dev/null || true
             docker compose pull
             docker compose up -d --force-recreate --no-deps app
             docker image prune -f
