@@ -10,7 +10,7 @@ on:
 
 env:
   REGISTRY: cr.yandex/crp5d38eikvdl1p4haav/sitechecker-registry
-  IMAGE_TAG: ${{ github.sha }}
+  IMAGE_TAG: "${{ github.sha }}"
 
 jobs:
   test:
@@ -55,7 +55,7 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}:${{ env.IMAGE_TAG }}
 
-   deploy:
+  deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -67,15 +67,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/ubuntu/sitechecker
-            
-            #  Авторизация в Yandex Container Registry
             echo "${{ secrets.YC_SA_KEY }}" | docker login -u json_key --password-stdin cr.yandex
-            
-            # Скачиваем свежий образ
             docker compose pull
-            
-            # Перезапускаем приложение
             docker compose up -d --force-recreate --no-deps app
-            
-            # Очищаем старые образы
             docker image prune -f
