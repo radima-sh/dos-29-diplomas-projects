@@ -13,28 +13,27 @@ import (
 )
 
 type Site struct {
-	ID int
-	URL string
-	Active bool
-	LastCheck time.Time
+	ID             int
+	URL            string
+	Active         bool
+	LastCheck      time.Time
 	ResponseTimeMs int64
-	}
+}
 
 var (
-	db *sql.DB
+	db        *sql.DB
 	templates *template.Template
 )
 
 func initDB() {
-	//connStr := "postgres://postgres:password@localhost:5432/sitesdb?sslmode=disable"
 	connStr := fmt.Sprintf(
-    	"postgresql://%s:%s@%s:%s/%s?sslmode=%s",
-    	os.Getenv("PGUSER"),
-    	os.Getenv("PGPASSWORD"),
-    	os.Getenv("PGHOST"),
-    	os.Getenv("PGPORT"),
-    	os.Getenv("PGDATABASE"),
-    	os.Getenv("PGSSLMODE"),
+		"postgresql://%s:%s@%s:%s/%s?sslmode=%s",
+		os.Getenv("PGUSER"),
+		os.Getenv("PGPASSWORD"),
+		os.Getenv("PGHOST"),
+		os.Getenv("PGPORT"),
+		os.Getenv("PGDATABASE"),
+		os.Getenv("PGSSLMODE"),
 	)
 	var err error
 	db, err = sql.Open("postgres", connStr)
@@ -80,8 +79,8 @@ func addSiteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	url := r.FormValue("url")
 	if url == "" {
-	http.Error(w, "url is required", http.StatusBadRequest)
-	return
+		http.Error(w, "url is required", http.StatusBadRequest)
+		return
 	}
 
 	_, err := db.Exec("INSERT INTO sites (url) VALUES ($1) ON CONFLICT DO NOTHING", url)
@@ -100,13 +99,13 @@ func updateStatuses() {
 	}
 	defer rows.Close()
 	for rows.Next() {
-			var id int
-			var url string
-			err := rows.Scan(&id, &url)
-			if err != nil {
-				log.Println("Scan error:", err)
-				continue
-			}
+		var id int
+		var url string
+		err := rows.Scan(&id, &url)
+		if err != nil {
+			log.Println("Scan error:", err)
+			continue
+		}
 		active, respTime, err := checkSite(url)
 		if err != nil {
 			active = false
@@ -114,7 +113,7 @@ func updateStatuses() {
 		}
 		_, err = db.Exec("UPDATE sites SET active=$1, last_check=NOW(), response_time_ms=$2 WHERE id=$3", active, respTime, id)
 		if err != nil {
-				log.Println("Update error:", err)
+			log.Println("Update error:", err)
 		}
 	}
 }
@@ -135,7 +134,14 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		sites = append(sites, s)
 	}
-	templates.ExecuteTemplate(w, "dashboard.html", sites)
+	// ИЗМЕНЕНИЕ: добавлена проверка ошибки рендеринга шаблона
+	// Если шаблон не может быть отрисован, логируем ошибку и возвращаем 500
+	// Это требуется линтером errcheck и улучшает надёжность приложения
+	if err := templates.ExecuteTemplate(w, "dashboard.html", sites); err != nil {
+		log.Printf("Template render error: %v", err)
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+		return
+	}
 }
 
 func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
@@ -154,11 +160,25 @@ func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		sites = append(sites, s)
 	}
-	templates.ExecuteTemplate(w, "response_time.html", sites)
+	// ИЗМЕНЕНИЕ: добавлена проверка ошибки рендеринга шаблона
+	// Если шаблон не может быть отрисован, логируем ошибку и возвращаем 500
+	// Это требуется линтером errcheck и улучшает надёжность приложения
+	if err := templates.ExecuteTemplate(w, "response_time.html", sites); err != nil {
+		log.Printf("Template render error: %v", err)
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+		return
+	}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	templates.ExecuteTemplate(w, "index.html", nil)
+	// ИЗМЕНЕНИЕ: добавлена проверка ошибки рендеринга шаблона
+	// Если шаблон не может быть отрисован, логируем ошибку и возвращаем 500
+	// Это требуется линтером errcheck и улучшает надёжность приложения
+	if err := templates.ExecuteTemplate(w, "index.html", nil); err != nil {
+		log.Printf("Template render error: %v", err)
+		http.Error(w, "Failed to render template", http.StatusInternalServerError)
+		return
+	}
 }
 
 func main() {
