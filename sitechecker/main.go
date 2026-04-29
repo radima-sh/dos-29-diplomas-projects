@@ -1,4 +1,3 @@
-// rebuild: 2026-04-28-force
 package main
 
 import (
@@ -45,6 +44,7 @@ func init() {
 	templates = template.Must(template.ParseGlob("templates/*.html"))
 }
 
+// indexHandler: главная страница — список сайтов с статусом
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query("SELECT url, active FROM sites ORDER BY url")
 	if err != nil {
@@ -64,14 +64,23 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		sites = append(sites, s)
 	}
 
- // Шаблон response_time.html использует {{range .}}, поэтому передаём просто слайс
-        if err := templates.ExecuteTemplate(w, "response_time.html", sites); err != nil {
-                http.Error(w, "Template render failed", http.StatusInternalServerError)
-                log.Printf("Template error: %v", err)
-                return
-        }
+	// index.html ожидает struct{Sites, Title}
+	data := struct {
+		Sites []Site
+		Title string
+	}{
+		Sites: sites,
+		Title: "Site Checker",
+	}
+
+	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
+		http.Error(w, "Template render failed", http.StatusInternalServerError)
+		log.Printf("Template error: %v", err)
+		return
+	}
 }
 
+// responseTimeHandler: страница с таблицей времени ответа
 func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query("SELECT url, response_time_ms FROM sites WHERE response_time_ms IS NOT NULL ORDER BY url")
 	if err != nil {
@@ -88,13 +97,19 @@ func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Row scan error: %v", err)
 			continue
 		}
-		sites = append(sites, s)  //nolint:staticcheck
+		sites = append(sites, s) //nolint:staticcheck
 	}
 
+	// response_time.html ожидает {{range .}}, передаём просто []Site
+	if err := templates.ExecuteTemplate(w, "response_time.html", sites); err != nil {
+		http.Error(w, "Template render failed", http.StatusInternalServerError)
+		log.Printf("Template error: %v", err)
+		return
+	}
 }
 
+// dashboardHandler: дашборд с индикаторами и названиями
 func dashboardHandler(w http.ResponseWriter, r *http.Request) {
-	// Запрашиваем сайты из БД (как в indexHandler)
 	rows, err := db.Query("SELECT url, active FROM sites ORDER BY url")
 	if err != nil {
 		http.Error(w, "DB query failed", http.StatusInternalServerError)
@@ -103,7 +118,6 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	// Собираем результаты в слайс
 	var sites []Site
 	for rows.Next() {
 		var s Site
@@ -114,7 +128,7 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		sites = append(sites, s)
 	}
 
-	// Передаём слайс в шаблон (шаблон ожидает {{range .}})
+	// dashboard.html ожидает {{range .}}, передаём просто []Site
 	if err := templates.ExecuteTemplate(w, "dashboard.html", sites); err != nil {
 		http.Error(w, "Template render failed", http.StatusInternalServerError)
 		log.Printf("Template error: %v", err)
@@ -123,7 +137,7 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// Регистрация хендлеров
+	// Регистрация всех трёх хендлеров
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/response-time", responseTimeHandler)
 	http.HandleFunc("/dashboard", dashboardHandler)
@@ -135,5 +149,3 @@ func main() {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
-
-// redeploy Вт 28 апр 2026 18:26:51 MSK
