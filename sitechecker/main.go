@@ -88,7 +88,7 @@ func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Row scan error: %v", err)
 			continue
 		}
-		sites = append(sites, s)
+		sites = append(sites, s)  //nolint:staticcheck
 	}
 
 }
