@@ -64,21 +64,12 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		sites = append(sites, s)
 	}
 
-	//  data определена ПЕРЕД использованием
-	data := struct {
-		Sites []Site
-		Title string
-	}{
-		Sites: sites,
-		Title: "Site Checker",
-	}
-
-	//  Обработка ошибки рендеринга
-	if err := templates.ExecuteTemplate(w, "index.html", data); err != nil {
-		http.Error(w, "Template render failed", http.StatusInternalServerError)
-		log.Printf("Template error: %v", err)
-		return
-	}
+ // Шаблон response_time.html использует {{range .}}, поэтому передаём просто слайс
+        if err := templates.ExecuteTemplate(w, "response_time.html", sites); err != nil {
+                http.Error(w, "Template render failed", http.StatusInternalServerError)
+                log.Printf("Template error: %v", err)
+                return
+        }
 }
 
 func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
