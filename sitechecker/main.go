@@ -118,16 +118,28 @@ func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func dashboardHandler(w http.ResponseWriter, r *http.Request) {
-	// Простой пример: показываем заглушку
-	data := struct {
-		Title string
-		Message string
-	}{
-		Title: "Dashboard",
-		Message: "Dashboard is under construction",
+	// Запрашиваем сайты из БД (как в indexHandler)
+	rows, err := db.Query("SELECT url, active FROM sites ORDER BY url")
+	if err != nil {
+		http.Error(w, "DB query failed", http.StatusInternalServerError)
+		log.Printf("DB query error: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	// Собираем результаты в слайс
+	var sites []Site
+	for rows.Next() {
+		var s Site
+		if err := rows.Scan(&s.URL, &s.Active); err != nil {
+			log.Printf("Row scan error: %v", err)
+			continue
+		}
+		sites = append(sites, s)
 	}
 
-	if err := templates.ExecuteTemplate(w, "dashboard.html", data); err != nil {
+	// Передаём слайс в шаблон (шаблон ожидает {{range .}})
+	if err := templates.ExecuteTemplate(w, "dashboard.html", sites); err != nil {
 		http.Error(w, "Template render failed", http.StatusInternalServerError)
 		log.Printf("Template error: %v", err)
 		return
