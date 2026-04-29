@@ -27,7 +27,7 @@
         url: https://download.docker.com/linux/ubuntu/gpg
         state: present
 
-    # 4. Добавляем репозиторий Docker (исправленная переменная)
+    # 4. Добавляем репозиторий Docker
     - name: Add Docker repository
       ansible.builtin.apt_repository:
         repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_facts['distribution_release'] }} stable"
@@ -43,7 +43,7 @@
           - docker-compose-plugin
         state: present
 
-    # 6. Добавляем ubuntu в группу docker (на будущее, для ручного доступа)
+    # 6. Добавляем ubuntu в группу docker 
     - name: Add ubuntu user to docker group
       ansible.builtin.user:
         name: ubuntu
@@ -59,7 +59,7 @@
         group: ubuntu
         mode: '0755'
 
-    # 8. Копируем ВСЕ файлы проекта на сервер
+    # 8. Копируем все файлы проекта на сервер
     - name: Copy application files
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../../"
@@ -77,13 +77,11 @@
         group: ubuntu
         mode: '0600'
 
-    # 10. Запускаем приложение через docker compose (ЗАПУСКАЕМ ОТ ROOT - без become_user)
+    # 10. Запускаем приложение через docker compose 
     - name: Start application
       ansible.builtin.command: docker compose up -d --build
       args:
         chdir: /home/ubuntu/sitechecker
-      # Убрали become_user: ubuntu — запускаем от root (уже есть become: true выше)
-      # Это решает проблему с правами на docker.sock
 
     # 11. Ждём, пока приложение поднимется на порту 8080
     - name: Wait for app to be ready

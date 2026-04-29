@@ -1,14 +1,14 @@
 services:
-  # ========== Наше Go-приложение ==========
   app:
-    build: .                          # Собираем образ из Dockerfile в текущей папке
-    container_name: sitechecker-app   # Фиксированное имя контейнера (удобно для логов)
+    image: cr.yandex/crp5d38eikvdl1p4haav/sitechecker-registry:latest
+    pull_policy: always
+    container_name: sitechecker-app   # Имя контейнера
     ports:
       - "8080:8080"                   # Хост:контейнер — доступ к приложению на localhost:8080
     environment:                      # Переменные окружения для подключения к БД
       - PGUSER=${PGUSER:-postgres}
       - PGPASSWORD=${PGPASSWORD:-changeme}
-      - PGHOST=db                     # Имя сервиса БД в docker-compose (автоматический DNS!)
+      - PGHOST=db                     # Имя сервиса БД в docker-compose
       - PGPORT=5432
       - PGDATABASE=sitesdb
       - PGSSLMODE=disable
@@ -19,9 +19,9 @@ services:
     networks:
       - app-network                   # Изолированная сеть для сервисов
 
-  # ========== PostgreSQL ==========
+  #  PostgreSQL
   db:
-    image: postgres:15-alpine         # Официальный минимальный образ PostgreSQL 15
+    image: postgres:15-alpine         # Минимальный образ PostgreSQL 15
     container_name: sitechecker-db
     environment:
       - POSTGRES_USER=${PGUSER:-postgres}
@@ -38,7 +38,7 @@ services:
     networks:
       - app-network
 
-# ========== Настройки сетей и томов ==========
+# Настройки сетей и томов
 networks:
   app-network:
     driver: bridge                    # Стандартная изолированная сеть

@@ -1,4 +1,4 @@
-# ========== Terraform ==========
+# Terraform 
 .terraform/
 *.tfstate
 *.tfstate.*
@@ -6,16 +6,16 @@
 *.tfvars.json
 *.lock.hcl
 
-# ========== Ansible ==========
+#  Ansible
 *.retry
 infra/ansible/roles/*/files/
 infra/ansible/roles/*/templates/
 
-# ========== Docker ==========
+#  Docker
 *.log
 docker-compose.override.yml
 
-# ========== Go ==========
+# Go
 *.exe
 *.exe~
 *.dll
@@ -27,12 +27,12 @@ bin/
 pkg/
 coverage.out
 
-# ========== Environment ==========
+# Environment 
 .env
 *.env
 !.env.example
 
-# ========== IDE & Editor ==========
+# IDE & Editor
 .idea/
 .vscode/
 *.swp
@@ -40,7 +40,7 @@ coverage.out
 *~
 *.tmp
 
-# ========== OS ==========
+# OS
 .DS_Store
 Thumbs.db
 ci-cd-key.json

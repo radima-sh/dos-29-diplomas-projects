@@ -43,7 +43,7 @@ resource "yandex_vpc_security_group" "sitechecker-sg" {
     v4_cidr_blocks    = ["0.0.0.0/0"]
   }
 
-  # Разрешаем весь исходящий трафик (для apt update, docker pull и т.д.)
+  # Разрешаем весь исходящий трафик
   egress {
     protocol       = "TCP"
     description    = "Allow all outbound"

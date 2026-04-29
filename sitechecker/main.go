@@ -134,9 +134,9 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		sites = append(sites, s)
 	}
-	// ИЗМЕНЕНИЕ: добавлена проверка ошибки рендеринга шаблона
+	//Проверка ошибки рендеринга шаблона
 	// Если шаблон не может быть отрисован, логируем ошибку и возвращаем 500
-	// Это требуется линтером errcheck и улучшает надёжность приложения
+	
 	if err := templates.ExecuteTemplate(w, "dashboard.html", sites); err != nil {
 		log.Printf("Template render error: %v", err)
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
@@ -160,9 +160,9 @@ func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		sites = append(sites, s)
 	}
-	// ИЗМЕНЕНИЕ: добавлена проверка ошибки рендеринга шаблона
+	// Проверка ошибки рендеринга шаблона
 	// Если шаблон не может быть отрисован, логируем ошибку и возвращаем 500
-	// Это требуется линтером errcheck и улучшает надёжность приложения
+	
 	if err := templates.ExecuteTemplate(w, "response_time.html", sites); err != nil {
 		log.Printf("Template render error: %v", err)
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
@@ -171,9 +171,9 @@ func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	// ИЗМЕНЕНИЕ: добавлена проверка ошибки рендеринга шаблона
+	// Проверка ошибки рендеринга шаблона
 	// Если шаблон не может быть отрисован, логируем ошибку и возвращаем 500
-	// Это требуется линтером errcheck и улучшает надёжность приложения
+	
 	if err := templates.ExecuteTemplate(w, "index.html", nil); err != nil {
 		log.Printf("Template render error: %v", err)
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)

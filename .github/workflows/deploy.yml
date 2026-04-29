@@ -76,21 +76,21 @@ jobs:
           script: |
             cd /home/ubuntu/sitechecker
             
-            # 🔐 Декодируем base64-ключ и авторизуемся
+            #  Декодируем base64-ключ и авторизуемся
             echo "${{ secrets.YC_SA_KEY }}" | base64 -d | docker login -u json_key --password-stdin cr.yandex
             
-            # 🗑️ Удаляем старый образ
+            #  Удаляем старый образ
             docker compose down app 2>/dev/null || true
             docker images | grep sitechecker-registry | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
             
-            # 📦 Скачиваем свежий образ
-            # Удаляем локальный образ, чтобы гарантированно скачать новый
+            #  Скачиваем свежий образ
+            # Удаляем локальный образ, чтобы  скачать новый
             docker rmi cr.yandex/crp5d38eikvdl1p4haav/sitechecker-registry:latest 2>/dev/null || true
             docker pull cr.yandex/crp5d38eikvdl1p4haav/sitechecker-registry:latest
             docker compose pull app
             
-            # 🚀 Запускаем с новым образом
+            # Запускаем с новым образом
             docker compose up -d --force-recreate --no-deps app
             
-            # 🧹 Чистим старые образы
+            #  Чистим старые образы
             docker image prune -f

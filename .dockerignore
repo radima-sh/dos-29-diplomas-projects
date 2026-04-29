@@ -1,0 +1,9 @@
+.git
+.github
+.env
+*.env
+README.md
+infra/
+ci-cd-key.*
+*.md
+sitechecker/main.go.broken
