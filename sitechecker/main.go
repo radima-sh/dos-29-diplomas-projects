@@ -91,21 +91,6 @@ func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
 		sites = append(sites, s)
 	}
 
-	//  data определена ПЕРЕД использованием
-	data := struct {
-		Sites []Site
-		Title string
-	}{
-		Sites: sites,
-		Title: "Response Times",
-	}
-
-	//  Правильное имя шаблона + обработка ошибки
-	if err := templates.ExecuteTemplate(w, "response_time.html", data); err != nil {
-		http.Error(w, "Template render failed", http.StatusInternalServerError)
-		log.Printf("Template error: %v", err)
-		return
-	}
 }
 
 func dashboardHandler(w http.ResponseWriter, r *http.Request) {
