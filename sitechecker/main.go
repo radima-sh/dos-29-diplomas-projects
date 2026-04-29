@@ -23,7 +23,6 @@ var db *sql.DB
 var templates *template.Template
 
 func init() {
-	// Подключение к БД из переменных окружения
 	connStr := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		os.Getenv("PGHOST"),
@@ -40,12 +39,81 @@ func init() {
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(5)
 
-	// Загрузка шаблонов
 	templates = template.Must(template.ParseGlob("templates/*.html"))
 }
 
-// indexHandler: главная страница — список сайтов с статусом
+func setNoCacheHeaders(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+}
+
+func checkSite(url string) (active bool, responseTimeMs int64) {
+	start := time.Now()
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get(url)
+
+	elapsed := time.Since(start).Milliseconds()
+
+	if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 400 {
+		return false, elapsed
+	}
+	resp.Body.Close()
+
+	return true, elapsed
+}
+
+func startSiteChecker() {
+	go func() {
+		log.Println("Site checker started (running every 5 minutes)")
+
+		for {
+			rows, err := db.Query("SELECT url FROM sites")
+			if err != nil {
+				log.Printf("Checker DB query error: %v", err)
+				time.Sleep(1 * time.Minute)
+				continue
+			}
+
+			var urls []string
+			for rows.Next() {
+				var url string
+				if err := rows.Scan(&url); err != nil {
+					log.Printf("Checker row scan error: %v", err)
+					continue
+				}
+				urls = append(urls, url)
+			}
+			rows.Close()
+
+			log.Printf("Checking %d sites...", len(urls))
+
+			for _, url := range urls {
+				active, responseTime := checkSite(url)
+
+				_, err := db.Exec(
+					"UPDATE sites SET active = $1, response_time_ms = $2, last_checked = $3 WHERE url = $4",
+					active, responseTime, time.Now(), url,
+				)
+				if err != nil {
+					log.Printf("Failed to update %s: %v", url, err)
+				} else {
+					log.Printf("Updated %s: active=%v, time=%dms", url, active, responseTime)
+				}
+
+				time.Sleep(2 * time.Second)
+			}
+
+			log.Println("Checker cycle complete. Next check in 5 minutes.")
+			time.Sleep(5 * time.Minute)
+		}
+	}()
+}
+
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	setNoCacheHeaders(w)
+
 	rows, err := db.Query("SELECT url, active FROM sites ORDER BY url")
 	if err != nil {
 		http.Error(w, "DB query failed", http.StatusInternalServerError)
@@ -64,7 +132,6 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		sites = append(sites, s)
 	}
 
-	// index.html ожидает struct{Sites, Title}
 	data := struct {
 		Sites []Site
 		Title string
@@ -80,8 +147,9 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// responseTimeHandler: страница с таблицей времени ответа
 func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
+	setNoCacheHeaders(w)
+
 	rows, err := db.Query("SELECT url, response_time_ms FROM sites WHERE response_time_ms IS NOT NULL ORDER BY url")
 	if err != nil {
 		http.Error(w, "DB query failed", http.StatusInternalServerError)
@@ -97,10 +165,9 @@ func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Row scan error: %v", err)
 			continue
 		}
-		sites = append(sites, s) //nolint:staticcheck
+		sites = append(sites, s)
 	}
 
-	// response_time.html ожидает {{range .}}, передаём просто []Site
 	if err := templates.ExecuteTemplate(w, "response_time.html", sites); err != nil {
 		http.Error(w, "Template render failed", http.StatusInternalServerError)
 		log.Printf("Template error: %v", err)
@@ -108,8 +175,9 @@ func responseTimeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// dashboardHandler: дашборд с индикаторами и названиями
 func dashboardHandler(w http.ResponseWriter, r *http.Request) {
+	setNoCacheHeaders(w)
+
 	rows, err := db.Query("SELECT url, active FROM sites ORDER BY url")
 	if err != nil {
 		http.Error(w, "DB query failed", http.StatusInternalServerError)
@@ -128,7 +196,6 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		sites = append(sites, s)
 	}
 
-	// dashboard.html ожидает {{range .}}, передаём просто []Site
 	if err := templates.ExecuteTemplate(w, "dashboard.html", sites); err != nil {
 		http.Error(w, "Template render failed", http.StatusInternalServerError)
 		log.Printf("Template error: %v", err)
@@ -137,12 +204,12 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// Регистрация всех трёх хендлеров
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/response-time", responseTimeHandler)
 	http.HandleFunc("/dashboard", dashboardHandler)
 
-	// Запуск сервера
+	startSiteChecker()
+
 	port := ":8080"
 	log.Printf("Server starting on http://localhost%s", port)
 	if err := http.ListenAndServe(port, nil); err != nil {
