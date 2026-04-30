@@ -1,6 +1,9 @@
 services:
   app:
     image: cr.yandex/crp5d38eikvdl1p4haav/sitechecker-registry:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     pull_policy: always
     container_name: sitechecker-app   # Имя контейнера
     ports:

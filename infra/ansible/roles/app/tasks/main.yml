@@ -1,0 +1,56 @@
+---
+- name: Create app directory
+  ansible.builtin.file:
+    path: /home/ubuntu/sitechecker
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+
+- name: Copy Dockerfile
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../..//Dockerfile"
+    dest: /home/ubuntu/sitechecker/Dockerfile
+    owner: ubuntu
+    group: ubuntu
+    mode: '0644'
+
+- name: Copy docker-compose.yml
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../..//docker-compose.yml"
+    dest: /home/ubuntu/sitechecker/docker-compose.yml
+    owner: ubuntu
+    group: ubuntu
+    mode: '0644'
+
+- name: Copy application source code
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../..//sitechecker/"
+    dest: /home/ubuntu/sitechecker/sitechecker/
+    owner: ubuntu
+    group: ubuntu
+    mode: '0644'
+
+- name: Copy .env file securely
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../..//.env"
+    dest: /home/ubuntu/sitechecker/.env
+    owner: ubuntu
+    group: ubuntu
+    mode: '0600'
+  ignore_errors: yes
+
+- name: Start application
+  ansible.builtin.command: docker compose up -d --build
+  args:
+    chdir: /home/ubuntu/sitechecker
+  register: compose_up
+  retries: 3
+  delay: 5
+  until: compose_up.rc == 0
+
+- name: Wait for app to be ready
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 8080
+    timeout: 90
