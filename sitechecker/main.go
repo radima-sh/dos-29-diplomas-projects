@@ -202,3 +202,5 @@ func main() {
 	fmt.Println("Listening on :8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
+
+// Jбновление для презентации 11.06.2026 
