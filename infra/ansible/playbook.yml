@@ -1,7 +1,14 @@
 ---
 - name: Настройка сервера для Site Checker
   hosts: sitechecker
-  become: true
+  become: yes
+  
+  vars:
+    domain_name: "sitechecker-diplom.mooo.com"
+    certbot_email: "radima.m@list.ru"  
+  
   roles:
     - docker
+    - nginx
+    - certbot
     - app

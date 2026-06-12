@@ -1,0 +1,40 @@
+---
+- name: Install Nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+    update_cache: yes
+
+- name: Start Nginx service
+  ansible.builtin.systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Copy Nginx configuration
+  ansible.builtin.template:
+    src: sitechecker.conf.j2
+    dest: /etc/nginx/sites-available/sitechecker
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Enable site configuration
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/sitechecker
+    dest: /etc/nginx/sites-enabled/sitechecker
+    state: link
+
+- name: Remove default Nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Test Nginx configuration
+  ansible.builtin.command: nginx -t
+  changed_when: false
+
+- name: Reload Nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: reloaded

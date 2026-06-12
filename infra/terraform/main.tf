@@ -21,7 +21,6 @@ resource "yandex_vpc_security_group" "sitechecker-sg" {
     protocol          = "TCP"
     description       = "Allow SSH"
     port              = 22
-    predefined_target = "self_security_group"
     v4_cidr_blocks    = ["0.0.0.0/0"]
   }
 
@@ -30,7 +29,6 @@ resource "yandex_vpc_security_group" "sitechecker-sg" {
     protocol          = "TCP"
     description       = "Allow HTTP"
     port              = 80
-    predefined_target = "self_security_group"
     v4_cidr_blocks    = ["0.0.0.0/0"]
   }
 
@@ -39,7 +37,6 @@ resource "yandex_vpc_security_group" "sitechecker-sg" {
     protocol          = "TCP"
     description       = "Allow HTTPS"
     port              = 443
-    predefined_target = "self_security_group"
     v4_cidr_blocks    = ["0.0.0.0/0"]
   }
 
@@ -51,15 +48,24 @@ resource "yandex_vpc_security_group" "sitechecker-sg" {
   }
 }
 
-# 4. Поиск актуального образа Ubuntu 22.04 LTS
+# 4. Статический публичный IP-адрес
+resource "yandex_vpc_address" "static-ip" {
+  name = "sitechecker-static-ip"
+  
+  external_ipv4_address {
+    zone_id = var.zone
+  }
+}
+
+# 5. Поиск актуального образа Ubuntu 22.04 LTS
 data "yandex_compute_image" "ubuntu" {
   family = "ubuntu-2204-lts"
 }
 
-# 5. Виртуальная машина (Compute Instance)
+# 6. Виртуальная машина (Compute Instance)
 resource "yandex_compute_instance" "sitechecker-vm" {
   name        = var.vm_name
-  platform_id = "standard-v3" # Современная платформа (Intel Ice Lake)
+  platform_id = "standard-v3"
 
   # Ресурсы ВМ
   resources {
@@ -71,14 +77,15 @@ resource "yandex_compute_instance" "sitechecker-vm" {
   boot_disk {
     initialize_params {
       image_id = data.yandex_compute_image.ubuntu.id
-      size     = 30 # 30 ГБ SSD
+      size     = 30
     }
   }
 
   # Сетевой интерфейс
   network_interface {
     subnet_id          = yandex_vpc_subnet.sitechecker-subnet.id
-    nat                = true # true = выдать публичный IP-адрес
+    nat                = true
+    nat_ip_address     = yandex_vpc_address.static-ip.external_ipv4_address[0].address
     security_group_ids = [yandex_vpc_security_group.sitechecker-sg.id]
   }
 

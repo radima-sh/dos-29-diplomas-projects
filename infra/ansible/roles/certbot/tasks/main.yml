@@ -1,0 +1,19 @@
+---
+- name: Install Certbot and Nginx plugin
+  ansible.builtin.apt:
+    name:
+      - certbot
+      - python3-certbot-nginx
+    state: present
+    update_cache: yes
+
+- name: Obtain SSL certificate
+  ansible.builtin.command:
+    cmd: >
+      certbot --nginx
+      -d {{ domain_name }}
+      --non-interactive
+      --agree-tos
+      --email {{ certbot_email }}
+      --redirect
+    creates: /etc/letsencrypt/live/{{ domain_name }}/fullchain.pem

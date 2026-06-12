@@ -34,8 +34,3 @@ variable "vm_name" {
   default     = "sitechecker-vm"
 }
 
-variable "db_password" {
-  description = "Пароль для PostgreSQL"
-  type        = string
-  sensitive   = true
-}
