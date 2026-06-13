@@ -95,9 +95,7 @@ jobs:
             echo "Time: $(date)"
             
             # Создаём .env из GitHub Secret
-            cat > .env << 'EOF'
-            ${{ secrets.ENV_FILE }}
-            EOF
+            echo '${{ secrets.ENV_FILE }}' | base64 -d > .env
             chmod 600 .env
             
             # Авторизуемся в Yandex Container Registry
