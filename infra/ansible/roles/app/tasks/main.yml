@@ -31,15 +31,6 @@
     group: ubuntu
     mode: '0644'
 
-- name: Copy .env file securely
-  ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../..//.env"
-    dest: /home/ubuntu/sitechecker/.env
-    owner: ubuntu
-    group: ubuntu
-    mode: '0600'
-  ignore_errors: yes
-
 - name: Start application
   ansible.builtin.command: docker compose up -d --build
   args:

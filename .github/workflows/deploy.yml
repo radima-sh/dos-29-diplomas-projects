@@ -68,7 +68,22 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: appleboy/ssh-action@v1.0.3
+      - uses: actions/checkout@v4
+
+      # Копируем docker-compose.yml на сервер
+      - name: Copy docker-compose.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_IP }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.yml"
+          target: "/home/ubuntu/sitechecker"
+          strip_components: 0
+          overwrite: true
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VM_IP }}
           username: ubuntu
@@ -76,24 +91,35 @@ jobs:
           script: |
             cd /home/ubuntu/sitechecker
             
-            #  Декодируем base64-ключ и авторизуемся
+            echo "Starting deployment"
+            echo "Time: $(date)"
+            
+            # Создаём .env из GitHub Secret
+            cat > .env << 'EOF'
+            ${{ secrets.ENV_FILE }}
+            EOF
+            chmod 600 .env
+            
+            # Авторизуемся в Yandex Container Registry
             echo "${{ secrets.YC_SA_KEY }}" | base64 -d | docker login -u json_key --password-stdin cr.yandex
             
-            #  Удаляем старый образ
-            docker compose down app 2>/dev/null || true
-            docker images | grep sitechecker-registry | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
-            
-            #  Скачиваем свежий образ
-            # Удаляем локальный образ, чтобы  скачать новый
-            docker rmi cr.yandex/crp5d38eikvdl1p4haav/sitechecker-registry:latest 2>/dev/null || true
-            docker pull cr.yandex/crp5d38eikvdl1p4haav/sitechecker-registry:latest
+            # Скачиваем свежий образ
             docker compose pull app
             
-            # Запускаем с новым образом
+            # Пересоздаём контейнер приложения (БД не трогаем)
             docker compose up -d --force-recreate --no-deps app
             
-            #  Чистим старые образы
+            # Ждём запуска
+            sleep 5
+            
+            # Проверяем статус
+            echo "Container status"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            
+            # Чистим старые образы
             docker image prune -f
+            
+            echo "Deployment complete"
 
       - name: Send Email Notification
         if: always()
