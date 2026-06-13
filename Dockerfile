@@ -14,21 +14,20 @@ RUN go mod download
 # Копируем весь исходный код приложения
 COPY sitechecker/ ./
 
-# Собираем бинарник
-RUN CGO_ENABLED=0 GOOS=linux go build -o sitechecker .
+# Собираем бинарник (используем REBUILD_TS для сброса кэша)
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-X main.BuildTimestamp=${REBUILD_TS}" -o sitechecker .
 
 # Запуск
-FROM alpine:latest
+FROM alpine:3.19
 
 RUN apk --no-cache add ca-certificates
 
-WORKDIR /root/
+WORKDIR /app
 
 # Копируем бинарник
 COPY --from=builder /app/sitechecker .
 
 # Копируем static и templates из папки sitechecker
-# После COPY sitechecker/ ./ в builder, эти папки находятся в /app/static и /app/templates
 COPY --from=builder /app/static ./static
 COPY --from=builder /app/templates ./templates
 
