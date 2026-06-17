@@ -1,4 +1,4 @@
-package main
+package main //для презентации
 
 import (
 	"database/sql"
